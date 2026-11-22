@@ -71,10 +71,37 @@ function make(s,stage){
   return frac(`${a}/${d} ${id==='S19'?'+':'−'} ${b}/${d} =`,id==='S19'?a+b:a-b,d,`Keep the denominator ${d}; ${id==='S19'?'add':'subtract'} the numerators.`);
  }
  case 'S21':case 'S22':{
-  d=den();k=P([2,3,4]);c=d*k;b=R(1,c-1);a=R(1,d-1);
-  if(id==='S22'){d=den();c=d*P([2,3]);a=R(1,d-1);b=R(1,Math.max(1,a*(c/d)));}
-  let n=id==='S21'?a*c+b*d:a*c-b*d;
-  return frac(`${a}/${d} ${id==='S21'?'+':'−'} ${b}/${c} =`,n,d*c,`Convert to a common denominator, then ${id==='S21'?'add':'subtract'} numerators.`);
+  // Distinct difficulty bands: multiples, coprime denominators, improper and mixed-number results.
+  const add=id==='S21', variant=small?R(0,1):hard?R(2,4):R(0,3);
+  let x,y,u,v,left,right,top,bottom,explain;
+  if(variant===0){ // One denominator is a multiple of the other.
+    x=P([2,3,4,5,6]);y=x*P([2,3]);u=R(1,x-1);v=R(1,y-1);
+  }else if(variant===1){ // An unsimplified equivalent fraction is intentional.
+    x=P([4,6,8,10,12]);y=P([2,3,4,5,6]);u=R(1,x-1);v=R(1,y-1);
+  }else if(variant===2){ // Denominators need a common multiple.
+    [x,y]=P([[3,4],[4,5],[5,6],[5,8],[6,8],[6,10],[8,12]]);
+    u=R(1,x-1);v=R(1,y-1);
+  }else if(variant===3){ // Greater than one, with improper-fraction answers possible.
+    [x,y]=P([[3,5],[4,7],[5,8],[6,7],[8,9]]);
+    u=R(Math.ceil(x/2),x-1);v=R(Math.ceil(y/2),y-1);
+  }else{ // Mixed numbers, reserved for later questions.
+    [x,y]=P([[3,4],[4,5],[5,6],[6,8],[5,8]]);
+    u=R(1,x-1);v=R(1,y-1);
+  }
+  // Keep subtraction non-negative and vary whether borrowing is needed.
+  let whole=variant===4?R(1,3):0;
+  if(!add && variant===4){
+    const w=R(2,4), z=R(1,w-1);
+    top=(w*x+u)*y-(z*y+v)*x;bottom=x*y;
+    return frac(`${w} ${u}/${x} − ${z} ${v}/${y} =`,top,bottom,`Convert both mixed numbers to improper fractions, find a common denominator and subtract.`);
+  }
+  if(!add && u*y<v*x){[x,y]=[y,x];[u,v]=[v,u];}
+  top=add?u*y+v*x:u*y-v*x;bottom=x*y;
+  if(add&&variant===4){
+    const w=R(1,3);
+    return frac(`${w} ${u}/${x} + ${v}/${y} =`,w*bottom+top,bottom,`Use a common denominator, then add the fractional parts to ${w}.`);
+  }
+  return frac(`${u}/${x} ${add?'+':'−'} ${v}/${y} =`,top,bottom,`Find a common denominator, ${add?'add':'subtract'} the numerators, and simplify if possible.`);
  }
  case 'S23':{
   d=den();c=den();a=R(1,d-1);b=R(1,c-1);let w=R(1,hard?4:2),z=R(1,hard?3:2);
@@ -116,7 +143,8 @@ window.makePracticeQuestions=function(section,n){
   let q=null;
   for(let tries=0;tries<500;tries++){
    const candidate=make(section,stage),sig=candidate.question.replace(/\d+(?:\.\d+)?/g,'#');
-   if(!seen.has(candidate.question)&&(sigs.get(sig)||0)<n){q=candidate;sigs.set(sig,(sigs.get(sig)||0)+1);break}
+   const limit=n;
+   if(!seen.has(candidate.question)&&(sigs.get(sig)||0)<limit){q=candidate;sigs.set(sig,(sigs.get(sig)||0)+1);break}
   }
   if(!q)throw Error('Unable to generate enough varied questions for '+section.id);
   seen.add(q.question);out.push(q);
